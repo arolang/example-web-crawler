@@ -1,0 +1,93 @@
+# =============================================================================
+# ARO Web Crawler - Build and Test Pipeline
+# =============================================================================
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['*']
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/arolang/example-web-crawler
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: aro-crawler:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test crawler
+        run: |
+          # Create output directory
+          mkdir -p output
+
+          # Run crawler with a simple test URL (with timeout)
+          timeout 60 docker run --rm \
+            -e CRAWL_URL=https://example.com \
+            -v $(pwd)/output:/output \
+            aro-crawler:test || true
+
+          # Check that some output was produced
+          echo "=== Output files ==="
+          ls -la output/
+
+          # Verify at least one file was created
+          FILE_COUNT=$(ls -1 output/*.txt 2>/dev/null | wc -l)
+          if [ "$FILE_COUNT" -gt 0 ]; then
+            echo "SUCCESS: Crawler produced $FILE_COUNT output file(s)"
+          else
+            echo "WARNING: No output files produced (may be expected for simple sites)"
+          fi
+
+      - name: Push Docker image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

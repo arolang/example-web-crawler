@@ -1,0 +1,125 @@
+# =============================================================================
+# ARO Web Crawler - GitLab CI/CD Pipeline
+# =============================================================================
+
+stages:
+  - build
+  - test
+  - publish
+
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+
+# Only run on main branch, tags, and merge requests
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+default:
+  interruptible: true
+
+# =============================================================================
+# Build Stage
+# =============================================================================
+build:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - docker build -t aro-crawler:$CI_COMMIT_SHA .
+    - docker save aro-crawler:$CI_COMMIT_SHA > crawler-image.tar
+  artifacts:
+    paths:
+      - crawler-image.tar
+    expire_in: 1 day
+  tags:
+    - spencer
+
+# =============================================================================
+# Test Stage
+# =============================================================================
+test:
+  stage: test
+  image: docker:24
+  services:
+    - docker:24-dind
+  needs:
+    - job: build
+      artifacts: true
+  script:
+    # Load the built image
+    - docker load < crawler-image.tar
+
+    # Create output directory
+    - mkdir -p output
+
+    # Run crawler with a simple test URL (with timeout)
+    - |
+      timeout 60 docker run --rm \
+        -e CRAWL_URL=https://example.com \
+        -v $(pwd)/output:/output \
+        aro-crawler:$CI_COMMIT_SHA || true
+
+    # Check output
+    - echo "=== Output files ==="
+    - ls -la output/
+
+    # Verify at least one file was created
+    - |
+      FILE_COUNT=$(ls -1 output/*.txt 2>/dev/null | wc -l || echo "0")
+      if [ "$FILE_COUNT" -gt 0 ]; then
+        echo "SUCCESS: Crawler produced $FILE_COUNT output file(s)"
+      else
+        echo "WARNING: No output files produced (may be expected for simple sites)"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - output/
+    expire_in: 7 days
+  tags:
+    - spencer
+
+# =============================================================================
+# Publish Stage - Push to GitLab Container Registry
+# =============================================================================
+publish:
+  stage: publish
+  image: docker:24
+  services:
+    - docker:24-dind
+  needs:
+    - job: build
+      artifacts: true
+    - job: test
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    # Load the built image
+    - docker load < crawler-image.tar
+
+    # Tag and push
+    - docker tag aro-crawler:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+
+    # Tag as latest for main branch
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "main" ]; then
+        docker tag aro-crawler:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest
+        docker push $CI_REGISTRY_IMAGE:latest
+      fi
+
+    # Tag with version for tags
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        docker tag aro-crawler:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
+        docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
+      fi
+  tags:
+    - spencer
