@@ -1,0 +1,58 @@
+(* ============================================================
+   ARO Web Crawler - Crawl Logic
+
+   Handles the CrawlPage event to fetch URLs, track crawled pages,
+   and trigger link extraction.
+   ============================================================ *)
+
+(Crawl Page: CrawlPage Handler) {
+    <Log> "CrawlPage handler triggered" to the <console>.
+
+    (* Extract from event data *)
+    <Extract> the <event-data> from the <event: data>.
+    <Extract> the <url> from the <event-data: url>.
+    <Extract> the <base-domain> from the <event-data: base>.
+
+    <Log> "Extracted URL:" to the <console>.
+    <Log> <url> to the <console>.
+
+    (* Check if already crawled *)
+    <Retrieve> the <crawled-urls> from the <crawled-repository>.
+    <Create> the <single-url-list> with [<url>].
+    <Compute> the <new-urls: difference> from <single-url-list> with <crawled-urls>.
+    <Compute> the <new-url-count: count> from <new-urls>.
+
+    (* Skip if already crawled - use match to check count *)
+    <Log> "Checking URL..." to the <console>.
+    match <new-url-count> {
+        case 0 {
+            <Return> an <OK: status> for the <skip>.
+        }
+    }
+
+    <Log> "Crawling:" to the <console>.
+    <Log> <url> to the <console>.
+
+    (* Mark URL as crawled before fetching to prevent duplicate requests *)
+    <Compute> the <updated-crawled: union> from <crawled-urls> with <single-url-list>.
+    <Store> the <updated-crawled> into the <crawled-repository>.
+
+    (* Fetch the page *)
+    <Request> the <html> from the <url>.
+    <Log> "Fetched HTML length:" to the <console>.
+    <Compute> the <html-len: length> from the <html>.
+    <Log> <html-len> to the <console>.
+
+    (* Extract text content from HTML using ParseHtml action *)
+    <ParseHtml> the <content-result: content> from the <html>.
+    <Extract> the <title> from the <content-result: title>.
+    <Extract> the <text-content> from the <content-result: content>.
+
+    (* Save the text content to file *)
+    <Emit> a <SavePage: event> with { url: <url>, title: <title>, content: <text-content>, base: <base-domain> }.
+
+    (* Extract links from the HTML *)
+    <Emit> a <ExtractLinks: event> with { url: <url>, html: <html>, base: <base-domain> }.
+
+    <Return> an <OK: status> for the <crawl>.
+}

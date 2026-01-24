@@ -1,0 +1,38 @@
+(* ============================================================
+   ARO Web Crawler - Application Entry Point
+
+   Reads CRAWL_URL from environment and starts the crawl process.
+   ============================================================ *)
+
+(Application-Start: Web Crawler) {
+    <Log> "Starting Web Crawler..." to the <console>.
+
+    (* Read starting URL from environment using Execute *)
+    <Execute> the <env-result> for the <shell> with "echo $CRAWL_URL".
+    <Extract> the <start-url> from the <env-result: output>.
+
+    <Log> "Starting URL:" to the <console>.
+    <Log> <start-url> to the <console>.
+
+    (* Create output directory *)
+    <Create> the <output-path> with "./output".
+    <Make> the <output-dir> to the <directory: output-path>.
+    <Log> "Output directory created" to the <console>.
+
+    (* Initialize empty crawled URLs set *)
+    <Create> the <crawled-urls> with [].
+    <Store> the <crawled-urls> into the <crawled-repository>.
+
+    (* Start crawling *)
+    <Emit> a <CrawlPage: event> with { url: <start-url>, base: <start-url> }.
+
+    (* Keep application alive to process events *)
+    <Keepalive> the <application> for the <events>.
+
+    <Return> an <OK: status> for the <startup>.
+}
+
+(Application-End: Success) {
+    <Log> "Web Crawler completed!" to the <console>.
+    <Return> an <OK: status> for the <shutdown>.
+}
