@@ -124,6 +124,38 @@ match <url> {
 
 ---
 
+## Run with Docker
+
+No ARO installation needed - just Docker:
+
+```bash
+# Clone this repository
+git clone https://github.com/arolang/example-web-crawler.git
+cd example-web-crawler
+
+# Run with docker compose
+docker compose up
+
+# Check the results
+ls output/
+```
+
+Or build and run manually:
+
+```bash
+# Build the image
+docker build -t aro-crawler .
+
+# Run with a custom URL
+docker run -e CRAWL_URL=https://example.com -v $(pwd)/output:/output aro-crawler
+```
+
+The Docker setup uses official ARO images from GitHub Container Registry:
+- `ghcr.io/arolang/aro-buildsystem` - Full build environment
+- `ghcr.io/arolang/aro-runtime` - Minimal runtime for compiled binaries
+
+---
+
 ## Help Improve ARO
 
 This demo is part of the ARO language project. If you:
