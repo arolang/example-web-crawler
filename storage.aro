@@ -16,9 +16,7 @@
     <Compute> the <url-hash: hash> from the <url>.
     <Create> the <file-path> with "./output/${<url-hash>}.md".
 
-    <Log> "Saving:" to the <console>.
-    <Log> <url> to the <console>.
-    <Log> <file-path> to the <console>.
+    <Log> "Saving: ${<url>} to ${<file-path>}" to the <console>.
 
     (* Format markdown file with frontmatter *)
     <Create> the <file-content> with "# ${<title>}\n\n**Source:** ${<url>}\n\n---\n\n${<content>}".

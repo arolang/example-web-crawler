@@ -13,8 +13,7 @@
     <Extract> the <url> from the <event-data: url>.
     <Extract> the <base-domain> from the <event-data: base>.
 
-    <Log> "Extracted URL:" to the <console>.
-    <Log> <url> to the <console>.
+    <Log> "Extracted URL: ${<url>}" to the <console>.
 
     (* Check if already crawled *)
     <Retrieve> the <crawled-urls> from the <crawled-repository>.
@@ -23,15 +22,13 @@
     <Compute> the <new-url-count: count> from <new-urls>.
 
     (* Skip if already crawled - use match to check count *)
-    <Log> "Checking URL..." to the <console>.
     match <new-url-count> {
         case 0 {
             <Return> an <OK: status> for the <skip>.
         }
     }
 
-    <Log> "Crawling:" to the <console>.
-    <Log> <url> to the <console>.
+    <Log> "Crawling: ${<url>}" to the <console>.
 
     (* Mark URL as crawled before fetching to prevent duplicate requests *)
     <Compute> the <updated-crawled: union> from <crawled-urls> with <single-url-list>.
@@ -39,9 +36,8 @@
 
     (* Fetch the page *)
     <Request> the <html> from the <url>.
-    <Log> "Fetched HTML length:" to the <console>.
     <Compute> the <html-len: length> from the <html>.
-    <Log> <html-len> to the <console>.
+    <Log> "Fetched HTML length: ${<html-len>}" to the <console>.
 
     (* Extract markdown content from HTML using ParseHtml action *)
     <ParseHtml> the <markdown-result: markdown> from the <html>.

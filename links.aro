@@ -16,9 +16,7 @@
     (* Use ParseHtml action to extract all href attributes from anchor tags *)
     <ParseHtml> the <links: links> from the <html>.
     <Compute> the <link-count: count> from the <links>.
-    <Log> "Found" to the <console>.
-    <Log> <link-count> to the <console>.
-    <Log> "links" to the <console>.
+    <Log> "Found ${<link-count>} links" to the <console>.
 
     (* Process each extracted link using parallel for *)
     parallel for each <raw-url> in <links> {
@@ -54,20 +52,8 @@
             <Create> the <absolute-url> with "${<base-domain>}${<raw-url>}".
             <Emit> a <FilterUrl: event> with { url: <absolute-url>, base: <base-domain> }.
         }
-        case /^#/ {
-            (* Fragment only - skip *)
-        }
-        case /^mailto:/ {
-            (* Email link - skip *)
-        }
-        case /^javascript:/ {
-            (* JavaScript link - skip *)
-        }
-        case /^tel:/ {
-            (* Phone link - skip *)
-        }
-        case /^data:/ {
-            (* Data URL - skip *)
+        case /^(#|mailto:|javascript:|tel:|data:)/ {
+            (* Skip fragments and special URLs *)
         }
     }
 
@@ -80,16 +66,9 @@
     <Extract> the <url> from the <event-data: url>.
     <Extract> the <base-domain> from the <event-data: base>.
 
-    (* Simple check: URL must start with http:// or https:// followed by same domain *)
-    (* For now, just pass all URLs through since they've been normalized *)
-    (* The QueueUrl handler will filter duplicates *)
-    match <url> {
-        case /^https?:\/\/ausdertechnik\.de/ {
-            <Log> "Queuing:" to the <console>.
-            <Log> <url> to the <console>.
-            <Emit> a <QueueUrl: event> with { url: <url>, base: <base-domain> }.
-        }
-    }
+    (* Filter URLs that belong to the same domain as base-domain *)
+    <Log> "Queuing: ${<url>}" to the <console> when <url> contains <base-domain>.
+    <Emit> a <QueueUrl: event> with { url: <url>, base: <base-domain> } when <url> contains <base-domain>.
 
     <Return> an <OK: status> for the <filter>.
 }
@@ -107,8 +86,7 @@
     <Compute> the <uncrawled-count: count> from <uncrawled-urls>.
 
     (* Only queue if not already crawled *)
-    <Log> "Queued:" to the <console> when <uncrawled-count> > 0.
-    <Log> <url> to the <console> when <uncrawled-count> > 0.
+    <Log> "Queued: ${<url>}" to the <console> when <uncrawled-count> > 0.
     <Emit> a <CrawlPage: event> with { url: <url>, base: <base-domain> } when <uncrawled-count> > 0.
 
     <Return> an <OK: status> for the <queue>.

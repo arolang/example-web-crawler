@@ -10,8 +10,7 @@
     (* Read starting URL from environment *)
     <Extract> the <start-url> from the <env: CRAWL_URL>.
 
-    <Log> "Starting URL:" to the <console>.
-    <Log> <start-url> to the <console>.
+    <Log> "Starting URL: ${<start-url>}" to the <console>.
 
     (* Create output directory *)
     <Create> the <output-path> with "./output".
