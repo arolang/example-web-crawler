@@ -7,9 +7,8 @@
 (Application-Start: Web Crawler) {
     <Log> "Starting Web Crawler..." to the <console>.
 
-    (* Read starting URL from environment using Execute *)
-    <Execute> the <env-result> for the <shell> with "echo $CRAWL_URL".
-    <Extract> the <start-url> from the <env-result: output>.
+    (* Read starting URL from environment *)
+    <Extract> the <start-url> from the <env: CRAWL_URL>.
 
     <Log> "Starting URL:" to the <console>.
     <Log> <start-url> to the <console>.
