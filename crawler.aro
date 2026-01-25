@@ -43,13 +43,13 @@
     <Compute> the <html-len: length> from the <html>.
     <Log> <html-len> to the <console>.
 
-    (* Extract text content from HTML using ParseHtml action *)
-    <ParseHtml> the <content-result: content> from the <html>.
-    <Extract> the <title> from the <content-result: title>.
-    <Extract> the <text-content> from the <content-result: content>.
+    (* Extract markdown content from HTML using ParseHtml action *)
+    <ParseHtml> the <markdown-result: markdown> from the <html>.
+    <Extract> the <title> from the <markdown-result: title>.
+    <Extract> the <markdown-content> from the <markdown-result: markdown>.
 
-    (* Save the text content to file *)
-    <Emit> a <SavePage: event> with { url: <url>, title: <title>, content: <text-content>, base: <base-domain> }.
+    (* Save the markdown content to file *)
+    <Emit> a <SavePage: event> with { url: <url>, title: <title>, content: <markdown-content>, base: <base-domain> }.
 
     (* Extract links from the HTML *)
     <Emit> a <ExtractLinks: event> with { url: <url>, html: <html>, base: <base-domain> }.

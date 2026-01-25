@@ -1,8 +1,8 @@
 (* ============================================================
    ARO Web Crawler - File Storage
 
-   Saves crawled pages to the output directory with filenames
-   derived from the URL hash (since Split doesn't work correctly).
+   Saves crawled pages as Markdown files to the output directory
+   with filenames derived from the URL hash.
    ============================================================ *)
 
 (Save Page: SavePage Handler) {
@@ -12,16 +12,16 @@
     <Extract> the <title> from the <event-data: title>.
     <Extract> the <content> from the <event-data: content>.
 
-    (* Use URL hash as filename since Split doesn't work *)
+    (* Use URL hash as filename *)
     <Compute> the <url-hash: hash> from the <url>.
-    <Create> the <file-path> with "./output/${<url-hash>}.txt".
+    <Create> the <file-path> with "./output/${<url-hash>}.md".
 
     <Log> "Saving:" to the <console>.
     <Log> <url> to the <console>.
     <Log> <file-path> to the <console>.
 
-    (* Format text file with title and URL *)
-    <Create> the <file-content> with "URL: ${<url>}\nTitle: ${<title>}\n\n${<content>}".
+    (* Format markdown file with frontmatter *)
+    <Create> the <file-content> with "# ${<title>}\n\n**Source:** ${<url>}\n\n---\n\n${<content>}".
 
     (* Write content to file *)
     <Write> the <file-content> to the <file: file-path>.

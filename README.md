@@ -46,7 +46,7 @@ This demo showcases key ARO features you'll use in your own applications:
 | **Parallel Processing** | `links.aro` | `parallel for each` processes multiple URLs concurrently |
 | **Set Operations** | `crawler.aro` | `difference` and `union` for URL deduplication |
 | **Pattern Matching** | `links.aro` | `match` with regex patterns classifies URL types |
-| **HTML Parsing** | `crawler.aro`, `links.aro` | `<ParseHtml>` extracts links and content |
+| **HTML Parsing** | `crawler.aro`, `links.aro` | `<ParseHtml>` extracts links and converts to Markdown |
 | **Repository Persistence** | `crawler.aro` | `<Store>` and `<Retrieve>` manage crawled URL state |
 | **Long-Running Apps** | `main.aro` | `<Keepalive>` keeps the event loop alive |
 
@@ -89,13 +89,33 @@ The crawler forms a natural event loop - each crawled page discovers new links, 
 ```
 example-web-crawler/
 ├── main.aro      # Application entry point, initialization
-├── crawler.aro   # Page fetching, content extraction
+├── crawler.aro   # Page fetching, HTML-to-Markdown conversion
 ├── links.aro     # Link extraction, URL normalization, filtering
-├── storage.aro   # File saving operations
-└── output/       # Crawled content (created at runtime)
+├── storage.aro   # Markdown file saving operations
+└── output/       # Crawled content as .md files (created at runtime)
 ```
 
 **~200 lines of ARO code** for a complete, parallel, deduplicating web crawler.
+
+### Output Format
+
+The crawler saves each page as a Markdown file with:
+- Page title as heading
+- Source URL for reference
+- Structured content preserving headings, links, lists, and formatting
+
+Example output:
+```markdown
+# Example Page Title
+
+**Source:** https://example.com/page
+
+---
+
+## Main Heading
+
+Content with **bold** and [links](https://example.com)...
+```
 
 ---
 
