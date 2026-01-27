@@ -17,15 +17,8 @@
     <Make> the <output-dir> to the <directory: output-path>.
     <Log> "Output directory created" to the <console>.
 
-    (* Initialize empty crawled URLs set *)
-    <Create> the <crawled-urls> with [].
-    <Store> the <crawled-urls> into the <crawled-repository>.
-
-    (* Start crawling *)
-    <Emit> a <CrawlPage: event> with { url: <start-url>, base: <start-url> }.
-
-    (* Keep application alive to process events *)
-    <Keepalive> the <application> for the <events>.
+    (* Queue initial URL - Emit blocks until the entire crawl chain completes *)
+    <Emit> a <QueueUrl: event> with { url: <start-url>, base: <start-url> }.
 
     <Return> an <OK: status> for the <startup>.
 }

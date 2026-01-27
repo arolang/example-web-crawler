@@ -6,38 +6,15 @@
    ============================================================ *)
 
 (Crawl Page: CrawlPage Handler) {
-    <Log> "CrawlPage handler triggered" to the <console>.
-
     (* Extract from event data *)
     <Extract> the <event-data> from the <event: data>.
     <Extract> the <url> from the <event-data: url>.
     <Extract> the <base-domain> from the <event-data: base>.
 
-    <Log> "Extracted URL: ${<url>}" to the <console>.
-
-    (* Check if already crawled *)
-    <Retrieve> the <crawled-urls> from the <crawled-repository>.
-    <Create> the <single-url-list> with [<url>].
-    <Compute> the <new-urls: difference> from <single-url-list> with <crawled-urls>.
-    <Compute> the <new-url-count: count> from <new-urls>.
-
-    (* Skip if already crawled - use match to check count *)
-    match <new-url-count> {
-        case 0 {
-            <Return> an <OK: status> for the <skip>.
-        }
-    }
-
     <Log> "Crawling: ${<url>}" to the <console>.
-
-    (* Mark URL as crawled before fetching to prevent duplicate requests *)
-    <Compute> the <updated-crawled: union> from <crawled-urls> with <single-url-list>.
-    <Store> the <updated-crawled> into the <crawled-repository>.
 
     (* Fetch the page *)
     <Request> the <html> from the <url>.
-    <Compute> the <html-len: length> from the <html>.
-    <Log> "Fetched HTML length: ${<html-len>}" to the <console>.
 
     (* Extract markdown content from HTML using ParseHtml action *)
     <ParseHtml> the <markdown-result: markdown> from the <html>.
