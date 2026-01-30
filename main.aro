@@ -25,5 +25,6 @@
 
 (Application-End: Success) {
     <Log> "🥁 Web Crawler completed!" to the <console>.
+    <Log> the <metrics: table> to the <console>.
     <Return> an <OK: status> for the <shutdown>.
 }
