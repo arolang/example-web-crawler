@@ -1,0 +1,126 @@
+openapi: 3.0.3
+info:
+  title: ARO Crawler Events
+  version: 1.0.0
+  description: Event schemas for the ARO web crawler application
+
+# No HTTP paths - this is an event-driven application
+paths: {}
+
+components:
+  schemas:
+    # CrawlPage event: triggers page fetching
+    CrawlPageEvent:
+      type: object
+      required:
+        - url
+        - base
+      properties:
+        url:
+          type: string
+          description: The URL to crawl
+        base:
+          type: string
+          description: The base domain for filtering
+
+    # SavePage event: triggers file storage
+    SavePageEvent:
+      type: object
+      required:
+        - url
+        - title
+        - content
+      properties:
+        url:
+          type: string
+          description: The page URL
+        title:
+          type: string
+          description: The page title
+        content:
+          type: string
+          description: The markdown content
+        base:
+          type: string
+          description: The base domain
+
+    # ExtractLinks event: triggers link extraction
+    ExtractLinksEvent:
+      type: object
+      required:
+        - url
+        - html
+      properties:
+        url:
+          type: string
+          description: The source page URL
+        html:
+          type: string
+          description: The raw HTML content
+        base:
+          type: string
+          description: The base domain for filtering
+
+    # NormalizeUrl event: triggers URL normalization
+    NormalizeUrlEvent:
+      type: object
+      required:
+        - raw
+        - source
+        - base
+      properties:
+        raw:
+          type: string
+          description: The raw href value
+        source:
+          type: string
+          description: The source page URL
+        base:
+          type: string
+          description: The base domain
+
+    # FilterUrl event: triggers URL filtering
+    FilterUrlEvent:
+      type: object
+      required:
+        - url
+        - base
+      properties:
+        url:
+          type: string
+          description: The normalized URL
+        base:
+          type: string
+          description: The base domain for filtering
+
+    # QueueUrl event: triggers URL queuing
+    QueueUrlEvent:
+      type: object
+      required:
+        - url
+        - base
+      properties:
+        url:
+          type: string
+          description: The URL to queue
+        base:
+          type: string
+          description: The base domain
+
+    # CrawlRequest: stored in repository
+    CrawlRequest:
+      type: object
+      required:
+        - id
+        - url
+        - base
+      properties:
+        id:
+          type: string
+          description: Hash of URL for deduplication
+        url:
+          type: string
+          description: The URL to crawl
+        base:
+          type: string
+          description: The base domain
