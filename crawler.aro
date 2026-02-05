@@ -6,15 +6,13 @@
    ============================================================ *)
 
 (Crawl Page: CrawlPage Handler) {
-    (* Extract from event data *)
-    <Extract> the <event-data> from the <event: data>.
-    <Extract> the <url> from the <event-data: url>.
-    <Extract> the <base-domain> from the <event-data: base>.
+    (* Typed event extraction - validates against CrawlPageEvent schema *)
+    <Extract> the <event-data: CrawlPageEvent> from the <event: data>.
 
-    <Log> "Crawling: ${<url>}" to the <console>.
+    <Log> "Crawling: ${<event-data: url>}" to the <console>.
 
     (* Fetch the page *)
-    <Request> the <html> from the <url>.
+    <Request> the <html> from the <event-data: url>.
 
     (* Extract markdown content from HTML using ParseHtml action *)
     <ParseHtml> the <markdown-result: markdown> from the <html>.
@@ -22,10 +20,10 @@
     <Extract> the <markdown-content> from the <markdown-result: markdown>.
 
     (* Save the markdown content to file *)
-    <Emit> a <SavePage: event> with { url: <url>, title: <title>, content: <markdown-content>, base: <base-domain> }.
+    <Emit> a <SavePage: event> with { url: <event-data: url>, title: <title>, content: <markdown-content>, base: <event-data: base> }.
 
     (* Extract links from the HTML *)
-    <Emit> a <ExtractLinks: event> with { url: <url>, html: <html>, base: <base-domain> }.
+    <Emit> a <ExtractLinks: event> with { url: <event-data: url>, html: <html>, base: <event-data: base> }.
 
     <Return> an <OK: status> for the <crawl>.
 }
