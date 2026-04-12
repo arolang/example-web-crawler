@@ -40,20 +40,41 @@
             Emit a <FilterUrl: event> with { url: <clean-url>, base: <base-domain> }.
         }
         case /^\/$/ {
-            (* Just "/" means root - use base domain as-is (no trailing slash) *)
-            Emit a <FilterUrl: event> with { url: <base-domain>, base: <base-domain> }.
+            (* Just "/" means root - resolve to origin (scheme+host) *)
+            Split the <root-scheme-parts> from the <base-domain> by /:\/\//.
+            Extract the <root-scheme: first> from the <root-scheme-parts>.
+            Extract the <root-hostpath: last> from the <root-scheme-parts>.
+            Split the <root-hostsegs> from the <root-hostpath> by /\//.
+            Extract the <root-host: first> from the <root-hostsegs>.
+            Create the <root-origin> with "${<root-scheme>}://${<root-host>}".
+            Emit a <FilterUrl: event> with { url: <root-origin>, base: <base-domain> }.
         }
         case /^\// {
-            (* Root-relative URL: prepend base domain, strip fragment and trailing slash *)
-            Create the <joined-url> with "${<base-domain>}${<raw-url>}".
+            (* Root-relative URL: prepend origin (scheme+host), strip fragment and trailing slash *)
+            Split the <scheme-parts> from the <base-domain> by /:\/\//.
+            Extract the <scheme: first> from the <scheme-parts>.
+            Extract the <hostpath: last> from the <scheme-parts>.
+            Split the <hostsegs> from the <hostpath> by /\//.
+            Extract the <host: first> from the <hostsegs>.
+            Create the <origin> with "${<scheme>}://${<host>}".
+            Create the <joined-url> with "${<origin>}${<raw-url>}".
             Split the <frag-parts> from the <joined-url> by /#/.
             Extract the <no-fragment: first> from the <frag-parts>.
             Split the <slash-parts> from the <no-fragment> by /\/+$/.
             Extract the <clean-url: first> from the <slash-parts>.
             Emit a <FilterUrl: event> with { url: <clean-url>, base: <base-domain> }.
         }
-        case /^(#|mailto:|javascript:|tel:|data:)/ {
-            (* Skip fragments and special URLs *)
+        case /^(#|mailto:|javascript:|tel:|data:|\.)/ {
+            (* Skip fragments, special URLs, and relative parent paths *)
+        }
+        case /[a-zA-Z]/ {
+            (* Relative URL (e.g., "getting-started.html") - resolve against base *)
+            Split the <src-frag> from the <raw-url> by /#/.
+            Extract the <rel-nofrag: first> from the <src-frag>.
+            Create the <rel-joined> with "${<base-domain>}/${<rel-nofrag>}".
+            Split the <rel-slash> from the <rel-joined> by /\/+$/.
+            Extract the <rel-clean: first> from the <rel-slash>.
+            Emit a <FilterUrl: event> with { url: <rel-clean>, base: <base-domain> }.
         }
     }
 
