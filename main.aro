@@ -5,26 +5,26 @@
    ============================================================ *)
 
 (Application-Start: Web Crawler) {
-    <Log> "Starting Web Crawler..." to the <console>.
+    Log "Starting Web Crawler..." to the <console>.
 
     (* Read starting URL from environment *)
-    <Extract> the <start-url> from the <env: CRAWL_URL>.
+    Extract the <start-url> from the <env: CRAWL_URL>.
 
-    <Log> "Starting URL: ${<start-url>}" to the <console>.
+    Log "Starting URL: ${<start-url>}" to the <console>.
 
     (* Create output directory *)
-    <Create> the <output-path> with "./output".
-    <Make> the <output-dir> to the <directory: output-path>.
-    <Log> "Output directory created" to the <console>.
+    Create the <output-path> with "./output".
+    Make the <output-dir> to the <directory: output-path>.
+    Log "Output directory created" to the <console>.
 
     (* Queue initial URL - Emit blocks until the entire crawl chain completes *)
-    <Emit> a <QueueUrl: event> with { url: <start-url>, base: <start-url> }.
+    Emit a <QueueUrl: event> with { url: <start-url>, base: <start-url> }.
 
-    <Return> an <OK: status> for the <startup>.
+    Return an <OK: status> for the <startup>.
 }
 
 (Application-End: Success) {
-    <Log> "🥁 Web Crawler completed!" to the <console>.
-    <Log> the <metrics: table> to the <console>.
-    <Return> an <OK: status> for the <shutdown>.
+    Log "🥁 Web Crawler completed!" to the <console>.
+    Log the <metrics: table> to the <console>.
+    Return an <OK: status> for the <shutdown>.
 }

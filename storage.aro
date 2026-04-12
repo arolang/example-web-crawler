@@ -7,22 +7,21 @@
 
 (Save Page: SavePage Handler) {
     (* Extract from event data structure *)
-    <Extract> the <event-data> from the <event: data>.
-    <Extract> the <url> from the <event-data: url>.
-    <Extract> the <title> from the <event-data: title>.
-    <Extract> the <content> from the <event-data: content>.
+    Extract the <url> from the <event: url>.
+    Extract the <title> from the <event: title>.
+    Extract the <content> from the <event: content>.
 
     (* Use URL hash as filename *)
-    <Compute> the <url-hash: hash> from the <url>.
-    <Create> the <file-path> with "./output/${<url-hash>}.md".
+    Compute the <url-hash: hash> from the <url>.
+    Create the <file-path> with "./output/${<url-hash>}.md".
 
-    <Log> "Saving: ${<url>} to ${<file-path>}" to the <console>.
+    Log "Saving: ${<url>} to ${<file-path>}" to the <console>.
 
     (* Format markdown file with frontmatter *)
-    <Create> the <file-content> with "# ${<title>}\n\n**Source:** ${<url>}\n\n---\n\n${<content>}".
+    Create the <file-content> with "# ${<title>}\n\n**Source:** ${<url>}\n\n---\n\n${<content>}".
 
     (* Write content to file *)
-    <Write> the <file-content> to the <file: file-path>.
+    Write the <file-content> to the <file: file-path>.
 
-    <Return> an <OK: status> for the <save>.
+    Return an <OK: status> for the <save>.
 }
