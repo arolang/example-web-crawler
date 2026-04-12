@@ -92,7 +92,7 @@
     Extract the <url> from the <crawl-request: url>.
     Extract the <base-domain> from the <crawl-request: base>.
 
-    Log "Queued: ${<url>}" to the <console>.
+    Log "Queued: ${<url>}" to the <console> when <env: DEBUG> == "1".
     Emit a <CrawlPage: event> with { url: <url>, base: <base-domain> }.
 
     Return an <OK: status> for the <observer>.

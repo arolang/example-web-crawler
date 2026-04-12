@@ -9,7 +9,7 @@
     (* Typed event extraction - validates against CrawlPageEvent schema *)
     Extract the <event-data: CrawlPageEvent> from the <event>.
 
-    Log "Crawling: ${<event-data: url>}" to the <console>.
+    Log "Crawling: ${<event-data: url>}" to the <console> when <env: DEBUG> == "1".
 
     (* Fetch the page *)
     Request the <response> from the <event-data: url>.
