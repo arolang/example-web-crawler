@@ -86,8 +86,16 @@
     Extract the <url> from the <event: url>.
     Extract the <base-domain> from the <event: base>.
 
-    (* Filter URLs that belong to the same domain as base-domain *)
-    Emit a <QueueUrl: event> with { url: <url>, base: <base-domain> } when <url> contains <base-domain>.
+    (* Only crawl HTML pages - skip images, documents, media, fonts, archives, and other non-HTML resources *)
+    match <url> {
+        case /\.(png|jpg|jpeg|gif|svg|webp|ico|bmp|tiff|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|tar|gz|rar|7z|mp3|mp4|avi|mov|wmv|flv|webm|ogg|wav|woff|woff2|ttf|eot|otf|css|js|json|xml|rss|atom|yaml|yml|toml|csv|exe|dmg|pkg|deb|rpm|msi|bin|iso|apk|img)(\?.*)?$/ {
+            Log "Skipping non-HTML: ${<url>}" to the <console> when <env: DEBUG> == "1".
+        }
+        case /./ {
+            (* Filter URLs that belong to the same domain as base-domain *)
+            Emit a <QueueUrl: event> with { url: <url>, base: <base-domain> } when <url> contains <base-domain>.
+        }
+    }
 
     Return an <OK: status> for the <filter>.
 }
