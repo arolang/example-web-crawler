@@ -15,7 +15,6 @@
     parallel for each <raw-url> in <links> {
         Emit a <NormalizeUrl: event> with {
             raw: <raw-url>,
-            source: <event-data: url>,
             base: <event-data: base>
         }.
     }
@@ -24,57 +23,31 @@
 }
 
 (Normalize URL: NormalizeUrl Handler) {
-    (* Extract from event data structure *)
     Extract the <raw-url> from the <event: raw>.
-    Extract the <source-url> from the <event: source>.
     Extract the <base-domain> from the <event: base>.
 
-    (* Determine URL type and normalize *)
     match <raw-url> {
         case /^https?:\/\// {
-            (* Already absolute URL - strip fragment and trailing slash *)
-            Split the <frag-parts> from the <raw-url> by /#/.
-            Extract the <no-fragment: first> from the <frag-parts>.
-            Split the <slash-parts> from the <no-fragment> by /\/+$/.
-            Extract the <clean-url: first> from the <slash-parts>.
-            Emit a <FilterUrl: event> with { url: <clean-url>, base: <base-domain> }.
-        }
-        case /^\/$/ {
-            (* Just "/" means root - resolve to origin (scheme+host) *)
-            Split the <root-scheme-parts> from the <base-domain> by /:\/\//.
-            Extract the <root-scheme: first> from the <root-scheme-parts>.
-            Extract the <root-hostpath: last> from the <root-scheme-parts>.
-            Split the <root-hostsegs> from the <root-hostpath> by /\//.
-            Extract the <root-host: first> from the <root-hostsegs>.
-            Create the <root-origin> with "${<root-scheme>}://${<root-host>}".
-            Emit a <FilterUrl: event> with { url: <root-origin>, base: <base-domain> }.
+            (* Already absolute *)
+            Emit a <FilterUrl: event> with { url: <raw-url>, base: <base-domain> }.
         }
         case /^\// {
-            (* Root-relative URL: prepend origin (scheme+host), strip fragment and trailing slash *)
+            (* Root or root-relative: prepend origin (scheme+host) *)
             Split the <scheme-parts> from the <base-domain> by /:\/\//.
             Extract the <scheme: first> from the <scheme-parts>.
             Extract the <hostpath: last> from the <scheme-parts>.
             Split the <hostsegs> from the <hostpath> by /\//.
             Extract the <host: first> from the <hostsegs>.
-            Create the <origin> with "${<scheme>}://${<host>}".
-            Create the <joined-url> with "${<origin>}${<raw-url>}".
-            Split the <frag-parts> from the <joined-url> by /#/.
-            Extract the <no-fragment: first> from the <frag-parts>.
-            Split the <slash-parts> from the <no-fragment> by /\/+$/.
-            Extract the <clean-url: first> from the <slash-parts>.
-            Emit a <FilterUrl: event> with { url: <clean-url>, base: <base-domain> }.
+            Create the <joined-url> with "${<scheme>}://${<host>}${<raw-url>}".
+            Emit a <FilterUrl: event> with { url: <joined-url>, base: <base-domain> }.
         }
         case /^(#|mailto:|javascript:|tel:|data:|\.)/ {
-            (* Skip fragments, special URLs, and relative parent paths *)
+            (* Skip fragments, special schemes, and relative parent paths *)
         }
         case /[a-zA-Z]/ {
-            (* Relative URL (e.g., "getting-started.html") - resolve against base *)
-            Split the <src-frag> from the <raw-url> by /#/.
-            Extract the <rel-nofrag: first> from the <src-frag>.
-            Create the <rel-joined> with "${<base-domain>}/${<rel-nofrag>}".
-            Split the <rel-slash> from the <rel-joined> by /\/+$/.
-            Extract the <rel-clean: first> from the <rel-slash>.
-            Emit a <FilterUrl: event> with { url: <rel-clean>, base: <base-domain> }.
+            (* Relative: resolve against base *)
+            Create the <joined-url> with "${<base-domain>}/${<raw-url>}".
+            Emit a <FilterUrl: event> with { url: <joined-url>, base: <base-domain> }.
         }
     }
 
@@ -82,18 +55,22 @@
 }
 
 (Filter URL: FilterUrl Handler) {
-    (* Extract from event data structure *)
     Extract the <url> from the <event: url>.
     Extract the <base-domain> from the <event: base>.
 
+    (* Strip fragment and trailing slashes once, centrally *)
+    Split the <frag-parts> from the <url> by /#/.
+    Extract the <no-fragment: first> from the <frag-parts>.
+    Split the <slash-parts> from the <no-fragment> by /\/+$/.
+    Extract the <clean-url: first> from the <slash-parts>.
+
     (* Only crawl HTML pages - skip images, documents, media, fonts, archives, and other non-HTML resources *)
-    match <url> {
+    match <clean-url> {
         case /\.(png|jpg|jpeg|gif|svg|webp|ico|bmp|tiff|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|tar|gz|rar|7z|mp3|mp4|avi|mov|wmv|flv|webm|ogg|wav|woff|woff2|ttf|eot|otf|css|js|json|xml|rss|atom|yaml|yml|toml|csv|exe|dmg|pkg|deb|rpm|msi|bin|iso|apk|img)(\?.*)?$/ {
-            Log "Skipping non-HTML: ${<url>}" to the <console> when <env: DEBUG> == "1".
+            Log "Skipping non-HTML: ${<clean-url>}" to the <console> when <env: DEBUG> == "1".
         }
         case /./ {
-            (* Filter URLs that belong to the same domain as base-domain *)
-            Emit a <QueueUrl: event> with { url: <url>, base: <base-domain> } when <url> contains <base-domain>.
+            Emit a <QueueUrl: event> with { url: <clean-url>, base: <base-domain> } when <clean-url> contains <base-domain>.
         }
     }
 

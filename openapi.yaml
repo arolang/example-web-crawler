@@ -66,15 +66,11 @@ components:
       type: object
       required:
         - raw
-        - source
         - base
       properties:
         raw:
           type: string
           description: The raw href value
-        source:
-          type: string
-          description: The source page URL
         base:
           type: string
           description: The base domain
