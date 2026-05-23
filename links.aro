@@ -1,18 +1,19 @@
 (* ============================================================
-   ARO Web Crawler - Link Extraction using ParseHtml Action
+   ARO Web Crawler - Link Pipeline (normalize → filter → queue)
 
-   Uses the built-in ParseHtml action for proper HTML parsing.
+   The HTML is parsed up-front by CrawlPage; this stage just fans
+   the pre-extracted href list out into NormalizeUrl events.
    ============================================================ *)
 
 (Extract Links: ExtractLinks Handler) {
     (* Typed event extraction - validates against ExtractLinksEvent schema *)
     Extract the <event-data: ExtractLinksEvent> from the <event>.
 
-    (* Use ParseHtml action to extract all href attributes from anchor tags *)
-    ParseHtml the <links: links> from the <event-data: html>.
-
-    (* Process links in parallel - repository Actor ensures atomic dedup *)
-    parallel for each <raw-url> in <links> {
+    (* Cap fan-out per page. Without this, a page with N links spawns N
+       concurrent Tasks (FeatureSetExecutor.swift:870 defaults concurrency
+       to items.count). For a site with hundreds of links per page and
+       many pages crawling at once, that blew up Swift task overhead. *)
+    parallel for each <raw-url> in <event-data: links> with <concurrency: 16> {
         Emit a <NormalizeUrl: event> with {
             raw: <raw-url>,
             base: <event-data: base>
@@ -64,13 +65,49 @@
     Split the <slash-parts> from the <no-fragment> by /\/+$/.
     Extract the <clean-url: first> from the <slash-parts>.
 
+    (* Resolve max URL length: MAX_URL_LENGTH env var, fallback 0 (= unlimited).
+       Set MAX_URL_LENGTH=0 (or leave it unset) to disable the length check. *)
+    Extract the <max-len-str> from the <env: MAX_URL_LENGTH>.
+    match <max-len-str> {
+        case /^[0-9]+$/ {
+            Transform the <max-length: int> from the <max-len-str>.
+        }
+        case /./ {
+            Create the <max-length> with 0.
+        }
+        case /^$/ {
+            Create the <max-length> with 0.
+        }
+    }
+    Compute the <url-length: length> from the <clean-url>.
+
+    (* Resolve URL stopword list: SKIP_WORDS_IN_URL=foo,bar,hausmeister.
+       Token-based match: tokenize the URL on non-alphanumerics and intersect
+       with the comma-split stopword list. This matches whole path segments
+       and query-arg names (so "en" hits /en/ but not /engineering/). *)
+    Extract the <skip-words-str> from the <env: SKIP_WORDS_IN_URL>.
+    Split the <skip-words> from the <skip-words-str> by /,/.
+    Split the <url-tokens> from the <clean-url> by /[^a-zA-Z0-9]+/.
+    Compute the <matched-words: intersect> from <url-tokens> with <skip-words>.
+    Compute the <matched-count: length> from the <matched-words>.
     (* Only crawl HTML pages - skip images, documents, media, fonts, archives, and other non-HTML resources *)
     match <clean-url> {
         case /\.(png|jpg|jpeg|gif|svg|webp|ico|bmp|tiff|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|tar|gz|rar|7z|mp3|mp4|avi|mov|wmv|flv|webm|ogg|wav|woff|woff2|ttf|eot|otf|css|js|json|xml|rss|atom|yaml|yml|toml|csv|exe|dmg|pkg|deb|rpm|msi|bin|iso|apk|img)(\?.*)?$/ {
             Log "Skipping non-HTML: ${<clean-url>}" to the <console> when <env: DEBUG> == "1".
         }
+        case /\/([^\/]+)\/\1\/\1(\/|$)/ {
+            (* Same path segment repeated 3+ times in a row (e.g. /undefined/undefined/undefined/)
+               indicates a broken link template or crawler trap — stop descending here. *)
+            Log "Skipping repeated-segment URL: ${<clean-url>}" to the <console> when <env: DEBUG> == "1".
+        }
         case /./ {
-            Emit a <QueueUrl: event> with { url: <clean-url>, base: <base-domain> } when <clean-url> contains <base-domain>.
+            (* Overlong URLs are usually a sign of session-encoded state or a crawler trap. *)
+            Log "Skipping over-long URL: ${<clean-url>} _ ${<url-length>} - ${<max-length>}" to the <console> when <env: DEBUG> == "1" and <max-length> > 0 and <url-length> > <max-length>.
+            Log "Skipping stopword URL: ${<clean-url>}" to the <console> when <env: DEBUG> == "1" and <matched-count> > 0.
+            Emit a <QueueUrl: event> with { url: <clean-url>, base: <base-domain> }
+                when <clean-url> contains <base-domain>
+                and (<max-length> == 0 or <url-length> <= <max-length>)
+                and <matched-count> == 0.
         }
     }
 

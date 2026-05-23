@@ -1,7 +1,6 @@
 services:
   crawler:
     build: .
-    environment:
-      - CRAWL_URL=https://arolang.github.io/aro/
+    command: ["--url", "https://arolang.github.io/aro/"]
     volumes:
       - ./output:/output

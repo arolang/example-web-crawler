@@ -1,14 +1,14 @@
 (* ============================================================
    ARO Web Crawler - Application Entry Point
 
-   Reads CRAWL_URL from environment and starts the crawl process.
+   Reads the --url command-line parameter and starts the crawl.
    ============================================================ *)
 
 (Application-Start: Web Crawler) {
     Log "Starting Web Crawler..." to the <console>.
 
-    (* Read starting URL from environment *)
-    Extract the <start-url> from the <env: CRAWL_URL>.
+    (* Read starting URL from the --url command-line parameter *)
+    Extract the <start-url> from the <parameter: url>.
 
     Log "Starting URL: ${<start-url>}" to the <console>.
 

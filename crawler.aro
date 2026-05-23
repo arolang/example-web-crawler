@@ -15,16 +15,18 @@
     Request the <response> from the <event-data: url>.
     Extract the <html> from the <response: body>.
 
-    (* Extract markdown content from HTML using ParseHtml action *)
-    ParseHtml the <markdown-result: markdown> from the <html>.
-    Extract the <title> from the <markdown-result: title>.
-    Extract the <markdown-content> from the <markdown-result: markdown>.
+    (* Single-parse mode: title + markdown + links from one SwiftSoup parse.
+       Earlier version ran ParseHtml twice on the same HTML body. *)
+    ParseHtml the <page: page> from the <html>.
+    Extract the <title> from the <page: title>.
+    Extract the <markdown-content> from the <page: markdown>.
+    Extract the <link-list> from the <page: links>.
 
     (* Save the markdown content to file *)
     Emit a <SavePage: event> with { url: <event-data: url>, title: <title>, content: <markdown-content>, base: <event-data: base> }.
 
-    (* Extract links from the HTML *)
-    Emit a <ExtractLinks: event> with { url: <event-data: url>, html: <html>, base: <event-data: base> }.
+    (* Hand the pre-extracted links to the normalize pipeline *)
+    Emit a <ExtractLinks: event> with { url: <event-data: url>, links: <link-list>, base: <event-data: base> }.
 
     Return an <OK: status> for the <crawl>.
 }

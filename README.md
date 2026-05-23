@@ -1,16 +1,12 @@
-# ARO Web Crawler
+# Web Crawler
 
-A web crawler built with [ARO](https://github.com/arolang/aro) that crawls a website, extracts content as Markdown, and saves each page to disk.
-
-[![ARO Language](https://img.shields.io/badge/ARO-Language-6366f1)](https://github.com/arolang/aro)
-
-![Web Crawler screenshot](Assets/screenshot.jpg)
+A web crawler that crawls a website, extracts content as Markdown, and saves each page to disk.
 
 ## Quick Start
 
 ```bash
 # Set your target URL and run
-CRAWL_URL=https://example.com aro run .
+./crawler --url https://example.com
 
 # Check the results
 ls output/
@@ -19,8 +15,29 @@ ls output/
 For verbose output:
 
 ```bash
-DEBUG=1 CRAWL_URL=https://example.com aro run .
+DEBUG=1 ./crawler --url https://example.com
 ```
+
+## Configuration
+
+The crawler reads runtime options from environment variables. The only required input is `--url`; everything else has sensible defaults.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `DEBUG` | unset | When `1`, logs every queued URL and every URL skipped by a filter rule. |
+| `MAX_URL_LENGTH` | `0` (unlimited) | URLs longer than this (after fragment/trailing-slash cleanup) are skipped. Catches session-encoded URLs and crawler traps. Set to `0` (the default — also used when the var is unset or non-numeric) to disable the length check entirely. |
+| `SKIP_WORDS_IN_URL` | unset | Comma-separated list of stopwords. A URL is skipped when any of its path/query tokens exactly matches one of these words. Token boundaries are non-alphanumeric characters, so `en` matches `/en/` but not `/engineering/`. |
+
+Example:
+
+```bash
+DEBUG=1 \
+MAX_URL_LENGTH=300 \
+SKIP_WORDS_IN_URL=en,veranstaltungen,login \
+./crawler --url https://example.com
+```
+
+In addition to these env vars, `FilterUrl Handler` (in `links.aro`) hard-codes two filters that aren't configurable: a non-HTML extension blocklist (images, archives, fonts, …) and a repeated-path-segment guard (URLs like `/x/x/x/…` are usually broken templates).
 
 ## How It Works
 
@@ -62,29 +79,13 @@ URL deduplication happens automatically: the repository ignores stores with dupl
 
 ```
 Crawler/
-├── main.aro        # Entry point: reads CRAWL_URL, creates output dir, emits first QueueUrl
+├── main.aro        # Entry point: reads --url parameter, creates output dir, emits first QueueUrl
 ├── crawler.aro     # CrawlPage Handler: fetches HTML, extracts Markdown, emits SavePage + ExtractLinks
 ├── links.aro       # Link pipeline: ExtractLinks, NormalizeUrl, FilterUrl, QueueUrl, repository Observer
 ├── storage.aro     # SavePage Handler: writes Markdown files to output/
 ├── openapi.yaml    # Event schemas (CrawlPageEvent, ExtractLinksEvent, etc.)
 └── output/         # Crawled pages as .md files (created at runtime)
 ```
-
-~200 lines of ARO code total.
-
-## Features Demonstrated
-
-| Feature | Where | Description |
-|---------|-------|-------------|
-| Event-driven architecture | All files | Feature sets communicate through events, never directly |
-| Repository observer | `links.aro` | `crawled-repository Observer` reacts to new entries |
-| Repository deduplication | `links.aro` | Storing with a hash ID prevents re-crawling visited URLs |
-| Parallel iteration | `links.aro` | `parallel for each` processes extracted links concurrently |
-| Pattern matching | `links.aro` | `match` with regex classifies URLs (absolute, root-relative, relative, skip) |
-| Typed event extraction | `crawler.aro` | `Extract the <data: CrawlPageEvent> from the <event>` validates against OpenAPI schema |
-| HTML parsing | `crawler.aro` | `ParseHtml` extracts Markdown content and links |
-| Conditional logging | All files | `when <env: DEBUG> == "1"` gates verbose output on an environment variable |
-| Contract-first schemas | `openapi.yaml` | Event payloads defined as OpenAPI component schemas |
 
 ## Output Format
 
@@ -100,24 +101,3 @@ Each crawled page is saved as a Markdown file named by the SHA-256 hash of its U
 Content with headings, links, lists, and formatting preserved...
 ```
 
-## Run with Docker
-
-```bash
-# Using docker compose
-docker compose up
-
-# Or manually
-docker build -t aro-crawler .
-docker run -e CRAWL_URL=https://example.com -v $(pwd)/output:/output aro-crawler
-```
-
-## Compile to Native Binary
-
-```bash
-aro build . --optimize
-./Crawler    # or .build/Crawler depending on platform
-```
-
-## License
-
-MIT

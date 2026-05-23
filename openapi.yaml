@@ -44,19 +44,25 @@ components:
           type: string
           description: The base domain
 
-    # ExtractLinks event: triggers link extraction
+    # ExtractLinks event: fans out pre-extracted links into NormalizeUrl
+    # NOTE: payload carries the already-parsed link list, NOT the HTML body.
+    # Passing the full HTML used to keep the page (~500 KB) alive in every
+    # in-flight handler — for a site with thousands of pages that dominated
+    # heap. Parsing happens once inside CrawlPage Handler.
     ExtractLinksEvent:
       type: object
       required:
         - url
-        - html
+        - links
       properties:
         url:
           type: string
           description: The source page URL
-        html:
-          type: string
-          description: The raw HTML content
+        links:
+          type: array
+          items:
+            type: string
+          description: Pre-extracted href values from the page
         base:
           type: string
           description: The base domain for filtering
