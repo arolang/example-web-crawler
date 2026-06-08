@@ -13,7 +13,7 @@
     Log "Starting URL: ${<start-url>}" to the <console>.
 
     (* Create output directory *)
-    Create the <output-path> with "./output".
+    Create the <output-path> with "/Users/kris/Projects/ARO/ARO-Application/Crawler/output".
     Make the <output-dir> to the <directory: output-path>.
     Log "Output directory created" to the <console>.
 
