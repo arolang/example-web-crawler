@@ -107,7 +107,7 @@
     Compute the <matched-count: length> from the <matched-words>.
     (* Only crawl HTML pages - skip images, documents, media, fonts, archives, and other non-HTML resources *)
     match <clean-url> {
-        case /\.(png|jpg|jpeg|gif|svg|webp|ico|bmp|tiff|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|tar|gz|rar|7z|mp3|mp4|avi|mov|wmv|flv|webm|ogg|wav|woff|woff2|ttf|eot|otf|css|js|json|xml|rss|atom|yaml|yml|toml|csv|exe|dmg|pkg|deb|rpm|msi|bin|iso|apk|img)(\?.*)?$/ {
+        case /\.(png|jpg|jpeg|gif|svg|webp|ico|bmp|tiff|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|tar|gz|rar|7z|mp3|mp4|avi|mov|wmv|flv|webm|ogg|wav|woff|woff2|ttf|eot|otf|css|js|json|xml|rss|atom|yaml|yml|toml|csv|exe|dmg|pkg|deb|rpm|msi|bin|iso|apk|img|eps|tif)(\?.*)?$/ {
             Log "Skipping non-HTML: ${<clean-url>}" to the <console> when <env: DEBUG> == "1".
         }
         case /\/([^\/]+)\/\1\/\1(\/|$)/ {
