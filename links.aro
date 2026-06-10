@@ -65,6 +65,21 @@
     Split the <slash-parts> from the <no-fragment> by /\/+$/.
     Extract the <clean-url: first> from the <slash-parts>.
 
+    (* Same-origin check: extract host from both clean-url and base-domain
+       and compare. ARO's `contains` is list-membership (see MastoStream /
+       FediTerm usage), not substring matching, so we can't just ask whether
+       the URL string contains the base string. Split only accepts a regex
+       literal, not a runtime separator, so we walk both sides identically. *)
+    Split the <clean-scheme-parts> from the <clean-url> by /:\/\//.
+    Extract the <clean-hostpath: last> from the <clean-scheme-parts>.
+    Split the <clean-hostsegs> from the <clean-hostpath> by /\//.
+    Extract the <clean-host: first> from the <clean-hostsegs>.
+
+    Split the <base-scheme-parts> from the <base-domain> by /:\/\//.
+    Extract the <base-hostpath: last> from the <base-scheme-parts>.
+    Split the <base-hostsegs> from the <base-hostpath> by /\//.
+    Extract the <base-host: first> from the <base-hostsegs>.
+
     (* Resolve max URL length: MAX_URL_LENGTH env var, fallback 0 (= unlimited).
        Set MAX_URL_LENGTH=0 (or leave it unset) to disable the length check. *)
     Extract the <max-len-str> from the <env: MAX_URL_LENGTH>.
@@ -104,9 +119,17 @@
             (* Overlong URLs are usually a sign of session-encoded state or a crawler trap. *)
             Log "Skipping over-long URL: ${<clean-url>} _ ${<url-length>} - ${<max-length>}" to the <console> when <env: DEBUG> == "1" and <max-length> > 0 and <url-length> > <max-length>.
             Log "Skipping stopword URL: ${<clean-url>}" to the <console> when <env: DEBUG> == "1" and <matched-count> > 0.
+            (* Two mutually-exclusive emits to side-step `or` inside `when` —
+               an inline `or` in a `when` clause did not group with parens the
+               way you'd expect, and silently killed every emit. *)
             Emit a <QueueUrl: event> with { url: <clean-url>, base: <base-domain> }
-                when <clean-url> contains <base-domain>
-                and (<max-length> == 0 or <url-length> <= <max-length>)
+                when <clean-host> == <base-host>
+                and <max-length> == 0
+                and <matched-count> == 0.
+            Emit a <QueueUrl: event> with { url: <clean-url>, base: <base-domain> }
+                when <clean-host> == <base-host>
+                and <max-length> > 0
+                and <url-length> <= <max-length>
                 and <matched-count> == 0.
         }
     }
@@ -129,14 +152,18 @@
     Return an <OK: status> for the <queue>.
 }
 
-(Trigger Crawl: crawled-repository Observer) {
-    (* React to new entries in the repository *)
+(Queue Pending: crawled-repository Observer) {
+    (* Mirror the new entry into pending-repository — do NOT emit
+       CrawlPage here. The drain loop in main.aro picks it up at the
+       top of the call stack. Emitting CrawlPage from this observer
+       used to chain Observer → CrawlPage → ExtractLinks → ... →
+       QueueUrl → Store → Observer → CrawlPage synchronously, pinning
+       one task-pool slot per recursion level and deadlocking on any
+       non-trivial site. *)
     Extract the <crawl-request> from the <event: newValue>.
-    Extract the <url> from the <crawl-request: url>.
-    Extract the <base-domain> from the <crawl-request: base>.
 
-    Log "Queued: ${<url>}" to the <console> when <env: DEBUG> == "1".
-    Emit a <CrawlPage: event> with { url: <url>, base: <base-domain> }.
+    Log "Queued: ${<crawl-request: url>}" to the <console> when <env: DEBUG> == "1".
+    Store the <crawl-request> into the <pending-repository>.
 
     Return an <OK: status> for the <observer>.
 }

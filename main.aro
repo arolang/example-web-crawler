@@ -1,24 +1,64 @@
 (* ============================================================
    ARO Web Crawler - Application Entry Point
 
-   Reads the --url command-line parameter and starts the crawl.
+   Reads the --url command-line parameter, seeds the queue, and
+   runs the drain loop that fires CrawlPage events at the top of
+   the call stack — keeping the runtime task pool from saturating
+   on large sites.
    ============================================================ *)
 
 (Application-Start: Web Crawler) {
     Log "Starting Web Crawler..." to the <console>.
 
-    (* Read starting URL from the --url command-line parameter *)
     Extract the <start-url> from the <parameter: url>.
-
     Log "Starting URL: ${<start-url>}" to the <console>.
 
-    (* Create output directory *)
     Create the <output-path> with "/Users/kris/Projects/ARO/ARO-Application/Crawler/output".
     Make the <output-dir> to the <directory: output-path>.
     Log "Output directory created" to the <console>.
 
-    (* Queue initial URL - Emit blocks until the entire crawl chain completes *)
+    (* Seed the queue. QueueUrl Handler stores into crawled-repository;
+       the crawled-repository Observer mirrors the new entry into
+       pending-repository, where the drain loop will pick it up. *)
     Emit a <QueueUrl: event> with { url: <start-url>, base: <start-url> }.
+
+    (* Drain loop --------------------------------------------------
+       ARO has no `while`, so we iterate a counted range. Each pass
+       snapshots pending-repository, clears it, then emits CrawlPage
+       for every snapshotted request. New URLs discovered while those
+       CrawlPages run land in pending-repository and are picked up on
+       the next pass. When the site is fully crawled, remaining passes
+       see an empty snapshot and no-op.
+
+       This loop runs at the *top* of the call stack — Emit CrawlPage
+       returns before the next Emit fires, so the synchronous-Emit
+       recursion that used to chain Observer → CrawlPage → ExtractLinks
+       → ... → QueueUrl → Observer → CrawlPage no longer pins the
+       executor pool.
+
+       MAX_DRAIN_ITERATIONS bounds total drain passes (default 1000 —
+       any connected page graph deeper than this is almost certainly
+       a crawler trap). *)
+    Extract the <max-iters-str> from the <env: MAX_DRAIN_ITERATIONS>.
+    match <max-iters-str> {
+        case /^[1-9][0-9]*$/ {
+            Transform the <max-iters: int> from the <max-iters-str>.
+        }
+        case /./ {
+            Create the <max-iters> with 1000.
+        }
+        case /^$/ {
+            Create the <max-iters> with 1000.
+        }
+    }
+
+    for <pass> from 0 to <max-iters> {
+        Retrieve the <pending-list> from the <pending-repository>.
+        Delete the <drained> from the <pending-repository>.
+        for each <req> in <pending-list> {
+            Emit a <CrawlPage: event> with { url: <req: url>, base: <req: base> }.
+        }
+    }
 
     Return an <OK: status> for the <startup>.
 }
