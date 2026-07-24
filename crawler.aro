@@ -22,11 +22,24 @@
     Extract the <markdown-content> from the <page: markdown>.
     Extract the <link-list> from the <page: links>.
 
+    (* Depth bookkeeping. <depth> is this page's own level (the seed is 1);
+       any links found here live one level deeper. <max> is the configured
+       limit (0 = unlimited). We keep descending only while unlimited or this
+       page sits strictly above the limit — so --depth 1 saves the seed but
+       extracts no links, --depth 2 extracts the seed's links then stops. *)
+    Extract the <depth> from the <event-data: depth>.
+    Extract the <max-depth> from the <event-data: max>.
+    Compute the <child-depth> from <depth> + 1.
+    Compute the <descend> from <max-depth> == 0 or <depth> < <max-depth>.
+
+    Log "Depth ${<depth>}/${<max-depth>} — descend: ${<descend>}" to the <console> when <env: DEBUG> == "1".
+
     (* Save the markdown content to file *)
     Emit a <SavePage: event> with { url: <event-data: url>, title: <title>, content: <markdown-content>, base: <event-data: base> }.
 
-    (* Hand the pre-extracted links to the normalize pipeline *)
-    Emit a <ExtractLinks: event> with { url: <event-data: url>, links: <link-list>, base: <event-data: base> }.
+    (* Hand the pre-extracted links to the normalize pipeline. Children carry
+       <child-depth>; the emit is suppressed once we hit the depth limit. *)
+    Emit a <ExtractLinks: event> with { url: <event-data: url>, links: <link-list>, base: <event-data: base>, depth: <child-depth>, max: <max-depth> } when <descend>.
 
     Return an <OK: status> for the <crawl>.
 }

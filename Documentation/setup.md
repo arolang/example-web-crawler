@@ -4,7 +4,7 @@
 
 | Tool | Version | Source |
 |---|---|---|
-| ARO toolchain | `0.9.6` matches the CI build image | `ghcr.io/arolang/aro-buildsystem:0.9.6` — install locally from <https://arolang.github.io/aro/> |
+| ARO toolchain | `0.11.2` matches the CI build image | `ghcr.io/arolang/aro-buildsystem:0.11.2` — install locally from <https://arolang.github.io/aro/> |
 | Docker (optional) | Any recent version supporting multi-stage builds | For `docker compose up` path |
 | `curl`, `tar`, `sha256sum` | System defaults | Only needed if you replicate the `package_linux_amd64` CI step locally |
 

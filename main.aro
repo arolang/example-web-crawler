@@ -13,14 +13,44 @@
     Extract the <start-url> from the <parameter: url>.
     Log "Starting URL: ${<start-url>}" to the <console>.
 
-    Create the <output-path> with "/Users/kris/Projects/ARO/ARO-Application/Crawler/output".
+    (* Resolve the optional --depth parameter into a max-depth sentinel.
+       0 = unlimited (crawl every reachable sub-page, the default). --depth 1
+       crawls the seed page alone; --depth 2 the seed plus the links found on
+       it; and so on. Unset / non-positive / non-numeric all fall through to 0,
+       mirroring the MAX_URL_LENGTH convention.
+
+       We read the whole <parameter> dict rather than <parameter: depth>
+       directly: the runtime raises a hard error for an absent *named*
+       parameter, but a missing key on the dict just falls through to the dict
+       itself — which the numeric case below rejects, landing on 0. *)
+    Extract the <all-params> from the <parameter>.
+    Extract the <depth-raw: depth> from the <all-params>.
+    (* Stringify before matching: `match` only runs its regex cases against a
+       string. A supplied --depth is an Int; an absent one leaves <depth-raw>
+       as the whole params dict — both render to a string the cases can test,
+       and only a bare positive integer reaches the numeric branch. *)
+    Create the <depth-str> with "${<depth-raw>}".
+    match <depth-str> {
+        case /^[1-9][0-9]*$/ {
+            Transform the <max-depth: int> from the <depth-str>.
+        }
+        case /./ {
+            Create the <max-depth> with 0.
+        }
+        case /^$/ {
+            Create the <max-depth> with 0.
+        }
+    }
+    Log "Crawl depth limit: ${<max-depth>} (0 = unlimited)" to the <console>.
+
+    Create the <output-path> with "./output".
     Make the <output-dir> to the <directory: output-path>.
     Log "Output directory created" to the <console>.
 
     (* Seed the queue. QueueUrl Handler stores into crawled-repository;
        the crawled-repository Observer mirrors the new entry into
        pending-repository, where the drain loop will pick it up. *)
-    Emit a <QueueUrl: event> with { url: <start-url>, base: <start-url> }.
+    Emit a <QueueUrl: event> with { url: <start-url>, base: <start-url>, depth: 1, max: <max-depth> }.
 
     (* Drain loop --------------------------------------------------
        ARO has no `while`, so we iterate a counted range. Each pass
@@ -56,7 +86,7 @@
         Retrieve the <pending-list> from the <pending-repository>.
         Delete the <drained> from the <pending-repository>.
         for each <req> in <pending-list> {
-            Emit a <CrawlPage: event> with { url: <req: url>, base: <req: base> }.
+            Emit a <CrawlPage: event> with { url: <req: url>, base: <req: base>, depth: <req: depth>, max: <req: max> }.
         }
     }
 

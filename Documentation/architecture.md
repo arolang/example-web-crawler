@@ -28,8 +28,8 @@ The crawler is a single OS process. `main.aro` reads a seed URL from `--url`, cr
 
 | Kind | What | Where |
 |---|---|---|
-| Build base image | `ghcr.io/arolang/aro-buildsystem:0.9.6` | `Dockerfile` stage 1 |
-| Runtime base image | `ghcr.io/arolang/aro-runtime:latest` | `Dockerfile` stage 2 |
+| Build base image | `ghcr.io/arolang/aro-buildsystem:0.11.2` | `Dockerfile` stage 1 |
+| Runtime base image | `ghcr.io/arolang/aro-runtime:0.11.2` | `Dockerfile` stage 2 |
 | Target HTTP(S) sites | Arbitrary, supplied by `--url` | User-provided |
 | Local filesystem | `./output/` host-side, `/output` in container | Output volume |
 

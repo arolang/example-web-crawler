@@ -16,7 +16,9 @@
     parallel for each <raw-url> in <event-data: links> with <concurrency: 16> {
         Emit a <NormalizeUrl: event> with {
             raw: <raw-url>,
-            base: <event-data: base>
+            base: <event-data: base>,
+            depth: <event-data: depth>,
+            max: <event-data: max>
         }.
     }
 
@@ -26,11 +28,15 @@
 (Normalize URL: NormalizeUrl Handler) {
     Extract the <raw-url> from the <event: raw>.
     Extract the <base-domain> from the <event: base>.
+    (* Depth/limit ride through this stage untouched — the target inherits the
+       depth already assigned when its parent extracted links. *)
+    Extract the <depth> from the <event: depth>.
+    Extract the <max-depth> from the <event: max>.
 
     match <raw-url> {
         case /^https?:\/\// {
             (* Already absolute *)
-            Emit a <FilterUrl: event> with { url: <raw-url>, base: <base-domain> }.
+            Emit a <FilterUrl: event> with { url: <raw-url>, base: <base-domain>, depth: <depth>, max: <max-depth> }.
         }
         case /^\// {
             (* Root or root-relative: prepend origin (scheme+host) *)
@@ -40,7 +46,7 @@
             Split the <hostsegs> from the <hostpath> by /\//.
             Extract the <host: first> from the <hostsegs>.
             Create the <joined-url> with "${<scheme>}://${<host>}${<raw-url>}".
-            Emit a <FilterUrl: event> with { url: <joined-url>, base: <base-domain> }.
+            Emit a <FilterUrl: event> with { url: <joined-url>, base: <base-domain>, depth: <depth>, max: <max-depth> }.
         }
         case /^(#|mailto:|javascript:|tel:|data:|\.)/ {
             (* Skip fragments, special schemes, and relative parent paths *)
@@ -48,7 +54,7 @@
         case /[a-zA-Z]/ {
             (* Relative: resolve against base *)
             Create the <joined-url> with "${<base-domain>}/${<raw-url>}".
-            Emit a <FilterUrl: event> with { url: <joined-url>, base: <base-domain> }.
+            Emit a <FilterUrl: event> with { url: <joined-url>, base: <base-domain>, depth: <depth>, max: <max-depth> }.
         }
     }
 
@@ -58,6 +64,9 @@
 (Filter URL: FilterUrl Handler) {
     Extract the <url> from the <event: url>.
     Extract the <base-domain> from the <event: base>.
+    (* Depth/limit pass through unchanged; the queue stage records them. *)
+    Extract the <depth> from the <event: depth>.
+    Extract the <max-depth> from the <event: max>.
 
     (* Strip fragment and trailing slashes once, centrally *)
     Split the <frag-parts> from the <url> by /#/.
@@ -122,11 +131,11 @@
             (* Two mutually-exclusive emits to side-step `or` inside `when` —
                an inline `or` in a `when` clause did not group with parens the
                way you'd expect, and silently killed every emit. *)
-            Emit a <QueueUrl: event> with { url: <clean-url>, base: <base-domain> }
+            Emit a <QueueUrl: event> with { url: <clean-url>, base: <base-domain>, depth: <depth>, max: <max-depth> }
                 when <clean-host> == <base-host>
                 and <max-length> == 0
                 and <matched-count> == 0.
-            Emit a <QueueUrl: event> with { url: <clean-url>, base: <base-domain> }
+            Emit a <QueueUrl: event> with { url: <clean-url>, base: <base-domain>, depth: <depth>, max: <max-depth> }
                 when <clean-host> == <base-host>
                 and <max-length> > 0
                 and <url-length> <= <max-length>
@@ -141,12 +150,18 @@
     (* Extract from event data structure *)
     Extract the <url> from the <event: url>.
     Extract the <base-domain> from the <event: base>.
+    (* Depth of this URL (parent + 1) and the global limit, carried on so the
+       drain loop can re-emit CrawlPage with them intact. Dedup is by URL hash,
+       so a URL keeps the depth it was first discovered at — and the level-by-
+       level drain means that is its shallowest reachable depth. *)
+    Extract the <depth> from the <event: depth>.
+    Extract the <max-depth> from the <event: max>.
 
     (* Generate deterministic id from URL hash for deduplication *)
     Compute the <url-id: hash> from the <url>.
 
     (* Store with id - repository deduplicates by id, observer only fires for new entries *)
-    Create the <crawl-request> with { id: <url-id>, url: <url>, base: <base-domain> }.
+    Create the <crawl-request> with { id: <url-id>, url: <url>, base: <base-domain>, depth: <depth>, max: <max-depth> }.
     Store the <crawl-request> into the <crawled-repository>.
 
     Return an <OK: status> for the <queue>.
@@ -159,11 +174,20 @@
        used to chain Observer → CrawlPage → ExtractLinks → ... →
        QueueUrl → Store → Observer → CrawlPage synchronously, pinning
        one task-pool slot per recursion level and deadlocking on any
-       non-trivial site. *)
+       non-trivial site.
+
+       ONLY mirror `created` changes. A store into crawled-repository fires
+       `created` for a brand-new id but `updated` when an existing id is
+       re-stored with a *different* value — and because each crawl-request
+       carries the URL's `depth`, re-discovering a page at a deeper level
+       writes a different record and would otherwise re-enqueue (and, with no
+       depth limit, loop forever) a page already crawled. Gating on `created`
+       is the structural dedup: a URL is queued exactly once, at the shallowest
+       depth it is first reached (the drain is level-by-level / BFS). *)
     Extract the <crawl-request> from the <event: newValue>.
 
-    Log "Queued: ${<crawl-request: url>}" to the <console> when <env: DEBUG> == "1".
-    Store the <crawl-request> into the <pending-repository>.
+    Log "Queued: ${<crawl-request: url>}" to the <console> when <env: DEBUG> == "1" and <event: changeType> == "created".
+    Store the <crawl-request> into the <pending-repository> when <event: changeType> == "created".
 
     Return an <OK: status> for the <observer>.
 }
